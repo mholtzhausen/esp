@@ -14,7 +14,7 @@ const login = {
 		'capturePassword': ['authenticating'],
 		'registerPassword': ['registering','captureEmail'],
 		'authenticating': ['authenticated'],
-		'authenticated':[]
+		'authenticated':['captureEmail']
 	},
 
 	afterTransition:{

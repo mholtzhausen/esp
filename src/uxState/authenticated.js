@@ -11,12 +11,6 @@ const authenticated = {
 			return true
 		}
 	},
-	beforeTransition: {
-		'false > true': (context) => {
-			console.log(`beforeTransition ${context.transitionName}`, context)
-			return true							
-		}
-	},
 	afterTransition: {
 		'true > false': ({$ux}) => {
 			$ux.login='captureEmail'

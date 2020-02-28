@@ -1,5 +1,5 @@
 <template>
-	<b-container fluid>
+	<b-container fluid class="p-0">
 		<p-dashboard v-if="$ux.authenticated==='true'"></p-dashboard>		
 		<p-login v-if="$ux.authenticated==='false'"></p-login>		
 	</b-container>

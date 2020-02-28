@@ -32,85 +32,94 @@ const uxStatePlugin = {
 		let state = options.state
 		const debug = options.debug ? console.log.bind(console) : () => { }
 
+		const $ = {}
 		const $ux = new Proxy(Vue.observable(state), {
 			set (target, p, value) {
-				return Vue.prototype.uxSet(p, value)
+				if (p === '$') return $
+				return $.set(p, value)
 			},
 			get (target, p) {
+				if (p === '$') return $
 				if (!(p in target)) return
 				return target[p].value
 			}
 		})
 
-		debug(`uxStatePlugin Debug -----`, options)
-		Vue.prototype.uxSet = function(prop, newValue) {
-			if (!(prop in state)) state[prop] = { value: '', validate: {}, beforeTransition: {}, afterTransition: {} }
+		$.set = function(prop, newValue) {
+			let canSet = this.canSet(prop, newValue)
+			if (!canSet.success) return false
+
 			let target = state[prop]
 			let oldValue = target.value
 			let validate = target.validate || {}
 
-			const ret = (success, value) => [success, value]
-
-			debug(`uxSet(${prop},${newValue})//oldValue=${oldValue}`)
-
-			debug(` .. Starting transition validation`)
-
-			const isValidState = 'states' in target ? target.states.indexOf(newValue) >= 0 : true
-			debug(` .. .. transioning to a valid state : ${isValidState ? "Yes" : "No"}`)
-
 			const transitionName = `${oldValue} > ${newValue}`
 			const context = { $ux, state, options, target, oldValue, validate, prop, newValue, transitionName }
-			if (transitionName in validate) {
-				let transitionValidation = validate[transitionName]
-				if (typeof transitionValidation === 'function') {
-					let transitionValid = transitionValidation(context)
-					debug(` Transition${transitionValid ? '' : ' Not'} Valid`)
-					if (!transitionValid) return ret(false, `${transitionName} transition failed validation`)
-				}
-			}
-			debug(` .. .. execute any validation functions registered for : ${oldValue} > ${newValue}`)
-
-
-			if ('constraints' in target) {
-				const c = target.constraints
-				if (oldValue in c) {
-					if(c[oldValue].indexOf(newValue)<0) return ret(false,`${transitionName} transition failed with constraints`)
-				}
-				debug(` .. .. is this flow allowed`)
-			}
 
 			if ('beforeTransition' in target) {
-				let bt = target.beforeTransition
-				debug(`.. found beforeTransition for ${transitionName}`, bt)
 				if (
-					typeof bt === 'object'
-					&& transitionName in bt
-					&& typeof bt[transitionName] === 'function'
+					typeof target.beforeTransition === 'object'
+					&& transitionName in target.beforeTransition
+					&& typeof target.beforeTransition[transitionName] === 'function'
 				) {
-					debug(`  .. ..   executing`)
-					if (!bt[transitionName](context)) {
+					if (!target.beforeTransition[transitionName](context)) {
 						return ret(false, `${transitionName} beforeTransition cancelled`)
 					}
 				}
 			}
 
-			debug(`TRANSITION ${prop} : ${transitionName}`)
 			Vue.set(target, 'value', newValue)
 
 			if ('afterTransition' in target) {
-				let bt = target.afterTransition
-				debug(`.. found afterTransition for ${transitionName}`, bt)
 				if (
-					typeof bt === 'object'
-					&& transitionName in bt
-					&& typeof bt[transitionName] === 'function'
+					typeof target.afterTransition === 'object'
+					&& transitionName in target.afterTransition
+					&& typeof target.afterTransition[transitionName] === 'function'
 				) {
-					debug(`  .. ..   executing`)
-					bt[transitionName](context)
+					target.afterTransition[transitionName](context)
 				}
 			}
-			return ret(true, { oldValue, newValue, isValidState, transitionName })
+
+			return transitionName
 		}
+
+		$.canSet = function(prop, newValue) {
+			if (!(prop in state)) state[prop] = { value: '', validate: {}, beforeTransition: {}, afterTransition: {} }
+
+			let target = state[prop]
+			let oldValue = target.value
+			let validate = target.validate || {}
+
+			const ret = (success, reason) => ({ success, reason })
+
+			const isValidState = 'states' in target ? target.states.indexOf(newValue) >= 0 : true
+			if (!isValidState) return ret(false, `${newValue} not defined in target.states `)
+
+			const transitionName = `${oldValue} > ${newValue}`
+			const context = { $ux, state, options, target, oldValue, validate, prop, newValue, transitionName }
+
+
+			if (transitionName in validate) {
+				let transitionValidation = validate[transitionName]
+				if (typeof transitionValidation === 'function') {
+					let transitionValid = transitionValidation(context)
+					if (!transitionValid) return ret(false, `${transitionName} transition failed validation`)
+				}
+			}
+
+
+			if ('constraints' in target) {
+				const c = target.constraints
+				if (oldValue in c) {
+					if (c[oldValue].indexOf(newValue) < 0) return ret(false, `${transitionName} transition failed with constraints`)
+				}
+			}
+
+			return ret(true, transitionName)
+		}
+
+
+		window.$ux = $ux
 
 		Vue.prototype.$ux = $ux
 
@@ -136,7 +145,6 @@ const uxStatePlugin = {
 				}
 			}
 		})
-
 
 	}
 }
