@@ -1,3 +1,4 @@
 module.exports = {
-	authenticated: require('./authenticated')
+	authenticated: require('./authenticated'),
+	login: require('./login'),
 }

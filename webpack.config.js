@@ -34,6 +34,12 @@ const config = {
 					'vue-style-loader',
 					'css-loader'
 				]
+			},
+			{
+				test: /\.(png|svg|jpg|gif)$/,
+				use: [
+					'file-loader',
+				]
 			}
 		]
 	},

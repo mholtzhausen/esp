@@ -1,6 +1,10 @@
 const authenticated = {
 	value: 'false',
 	states: ['true', 'false'],
+	constraints:{
+		'true':['false'],
+		'false':['true'],
+	},
 	validate: {
 		'true > false': (context) => {
 			console.log(`validate ${context.transitionName}`, context)
@@ -14,8 +18,8 @@ const authenticated = {
 		}
 	},
 	afterTransition: {
-		'true > false': (context) => {
-			console.log(`afterTransition ${context.transitionName}`, context)
+		'true > false': ({$ux}) => {
+			$ux.login='captureEmail'
 			return true							
 		}
 	},
